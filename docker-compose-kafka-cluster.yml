@@ -1,0 +1,148 @@
+version: "3"
+networks:
+    zookeeper:
+        driver: bridge
+    kafka:
+        driver: bridge
+services:
+    kafka01:
+        build: 
+            context: ./bin/kafka
+        image: lcavator/kafka:1.0
+        depends_on:
+            - zookeeper01
+            - zookeeper02
+            - zookeeper03
+        container_name: "kafka01"
+        restart: 'always'
+        environment:
+            ZOOKEEPER_DATADIR: /data/kafka
+            KAFKA_ZOOKEEPER_CONNECT: zookeeper01:2181,zookeeper02:2181,zookeeper03:2181/kafka
+            KAFKA_BROKER_ID: '1'
+        volumes:
+            - ./data/kafka01:/data/kafka
+        networks:
+            - kafka
+            - zookeeper
+    kafka02:
+        depends_on:
+            - zookeeper01
+            - zookeeper02
+            - zookeeper03
+            - kafka01
+        image: lcavator/kafka:1.0
+        container_name: "kafka02"
+        restart: 'always'
+        environment:
+            ZOOKEEPER_DATADIR: /data/kafka
+            KAFKA_ZOOKEEPER_CONNECT: zookeeper01:2181,zookeeper02:2181,zookeeper03:2181/kafka
+            KAFKA_BROKER_ID: '2'
+        volumes:
+            - ./data/kafka02:/data/kafka
+        networks:
+            - kafka
+            - zookeeper
+    kafka03:
+        depends_on:
+            - zookeeper01
+            - zookeeper02
+            - zookeeper03
+            - kafka01
+        image: lcavator/kafka:1.0
+        container_name: "kafka03"
+        restart: 'always'
+        environment:
+            ZOOKEEPER_DATADIR: /data/kafka
+            KAFKA_ZOOKEEPER_CONNECT: zookeeper01:2181,zookeeper02:2181,zookeeper03:2181/kafka
+            KAFKA_BROKER_ID: '3'
+        volumes:
+            - ./data/kafka03:/data/kafka
+        networks:
+            - kafka
+            - zookeeper
+    zookeeper01:
+        build: 
+            context: ./bin/zookeeper
+        image: lcavator/zookeeper:1.0
+        container_name: "zookeeper01"
+        restart: 'always'
+        environment:
+            ZOOKEEPER_DATADIR: /data/zookeeper
+            ZOOKEEPER_SERVER_CLUS_CONFIG: zookeeper01;zookeeper02;zookeeper03
+            ZOOKEEPER_MY_ID: '1'
+        volumes:
+            - ./data/zookeeper01:/data/zookeeper
+        networks:
+            - zookeeper
+    zookeeper02:
+        image: lcavator/zookeeper:1.0
+        container_name: "zookeeper02"
+        restart: 'always'
+        depends_on: 
+            - zookeeper01
+        environment:
+            ZOOKEEPER_DATADIR: /data/zookeeper
+            ZOOKEEPER_SERVER_CLUS_CONFIG: zookeeper01;zookeeper02;zookeeper03
+            ZOOKEEPER_MY_ID: '2'
+        volumes:
+            - ./data/zookeeper02:/data/zookeeper
+        networks:
+            - zookeeper
+    zookeeper03:
+        image: lcavator/zookeeper:1.0
+        container_name: "zookeeper03"
+        depends_on: 
+            - zookeeper01
+        restart: 'always'
+        environment:
+            ZOOKEEPER_DATADIR: /data/zookeeper/
+            ZOOKEEPER_SERVER_CLUS_CONFIG: zookeeper01;zookeeper02;zookeeper03
+            ZOOKEEPER_MY_ID: '3'
+        volumes:
+            - ./data/zookeeper03:/data/zookeeper
+        networks:
+            - zookeeper
+    web:
+        image: elkozmon/zoonavigator-web:latest
+        container_name: zoonavigator-web
+        depends_on:
+            - zookeeper01
+            - zookeeper02
+            - zookeeper03
+            - api
+        networks:
+            - zookeeper
+        environment:
+            API_HOST: "zoonavigator-api"
+            API_PORT: 9001
+            SERVER_HTTP_PORT: 8001
+            AUTO_CONNECT_CONNECTION_STRING: zookeeper01:2181,zookeeper02:2181,zookeeper03:2181
+        ports: 
+            - "8081:8001"
+        restart: always
+    api:
+        depends_on:
+            - zookeeper01
+            - zookeeper02
+            - zookeeper03
+        image: elkozmon/zoonavigator-api:latest
+        container_name: zoonavigator-api
+        networks:
+            - zookeeper
+        environment:
+            SERVER_HTTP_PORT: 9001
+        restart: always
+    kafka-manager:
+        image: kafkamanager/kafka-manager:latest
+        depends_on:
+            - kafka01
+            - kafka02
+            - kafka03
+        container_name: kafka-manager
+        environment:
+            ZK_HOSTS: zookeeper01:2181,zookeeper02:2181,zookeeper03:2181
+        ports:
+            - 8080:9000
+        networks:
+            - kafka
+            - zookeeper
