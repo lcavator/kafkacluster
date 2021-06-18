@@ -1,7 +1,7 @@
 # kafkacluster
 Some docker, docker-compose example to a self study on Kafka server infrastructure
 
-docker-compose-kafka-cluster start:
+docker-compose-kafka-cluster:
  - 3 zookeeper node in cluster; 
  - 3 kafka brokers in cluster;
  - kafka manager
